@@ -78,14 +78,14 @@ function disableAdminMode() {
     const passwordInput = document.getElementById('adminPassword');
     passwordInput.disabled = false;
     document.getElementById('adminAuthButton').disabled = false;
-    passwordInput.placeholder = '';
+    passwordInput.placeholder = 'Mot de passe admin (1000)';
     document.getElementById('adminPanel').style.display = 'none';
     generateSchedule();
     alert("Mode Administrateur désactivé.");
 }
 
 
-// --- GESTION DES EMPLOYÉS ET PLAGES HORAIRES (ADMIN) ---
+// --- GESTION DES EMPLOYÉS (ADMIN) ---
 
 function addEmployee() {
     const nameInput = document.getElementById('newEmployeeName');
@@ -111,14 +111,7 @@ function removeEmployee(id) {
     saveSchedule();
 }
 
-// NOTE: Les fonctions addShift et removeShift ont été retirées.
-
-// CORRIGÉ: Fonction nettoyée pour ne gérer que les employés
 function renderAdminLists() {
-    
-    // NOTE: Gestion des Plages Horaires retirée de l'interface Admin.
-    
-    // Affiche la liste des employés par département dans le panneau admin.
     const listContainer = document.getElementById('employeesListContainer');
     listContainer.innerHTML = '';
 
@@ -173,11 +166,12 @@ function updateShiftTime(scheduleKey, type, event) {
     // Sauvegarde ou suppression de la donnée
     if (shiftToSave === null || shiftToSave === "------" || shiftToSave === "------" + "-" + "------") {
         delete scheduleData[scheduleKey];
-        container.querySelector('.shift-label').textContent = "------";
+        // En mode admin, la span d'affichage est cachée, mais on la met à jour pour l'impression
+        container.querySelector('.shift-label').textContent = "------"; 
     } else {
         scheduleData[scheduleKey] = shiftToSave;
         
-        // Met à jour l'étiquette pour l'impression/affichage
+        // Met à jour l'étiquette (cachée en admin, visible en non-admin et pour l'impression)
         const displayValue = SPECIAL_SHIFTS.includes(shiftToSave) 
                             ? shiftToSave 
                             : shiftToSave.replace('-', ' à ');
@@ -347,38 +341,50 @@ function generateSchedule() {
                         cell.classList.add('not-available');
                     }
                     
-                    // --- STRUCTURE DE LA CELLULE AVEC DEUX MENUS ---
-                    cell.innerHTML = `
-                        <div class="d-flex flex-column align-items-center position-relative">
-                            
-                            <div class="form-check form-check-inline availability-check">
-                                <input class="form-check-input" type="checkbox" data-key="${scheduleKey}" 
-                                       id="nd-${scheduleKey}" onchange="updateAvailability(event)"
-                                       ${isNotAvailable ? 'checked' : ''}>
-                                <label class="form-check-label fw-bold" for="nd-${scheduleKey}">N/D</label>
-                            </div>
+                    // --- STRUCTURE DE LA CELLULE AVEC LES LIBELLÉS "DÉBUT" ET "FIN" ---
+                    if (isAdminMode) {
+                        // Mode Admin: Afficher les libellés et les menus
+                        cell.innerHTML = `
+                            <div class="d-flex flex-column align-items-center position-relative">
+                                
+                                <div class="form-check form-check-inline availability-check">
+                                    <input class="form-check-input" type="checkbox" data-key="${scheduleKey}" 
+                                        id="nd-${scheduleKey}" onchange="updateAvailability(event)"
+                                        ${isNotAvailable ? 'checked' : ''}>
+                                    <label class="form-check-label fw-bold" for="nd-${scheduleKey}">N/D</label>
+                                </div>
+                                
+                                <div class="d-flex flex-row align-items-center justify-content-center w-100 mb-1">
+                                    <span class="me-1 fw-bold" style="font-size: 0.85em; width: 40px;">Début:</span>
+                                    <select class="form-select form-select-sm start-time" data-key="${scheduleKey}" 
+                                            onchange="updateShiftTime('${scheduleKey}', 'start', event)"
+                                            style="min-width: 95px;">
+                                        ${SPECIAL_SHIFTS.map(shift => `<option value="${shift}" ${shift === specialShift ? 'selected' : ''}>${shift}</option>`).join('')}
+                                        <option disabled>──────────</option>
+                                        ${TIME_OPTIONS.filter(t => t !== "------").map(time => `<option value="${time}" ${time === startTime ? 'selected' : ''}>${time}</option>`).join('')}
+                                    </select>
+                                </div>
 
-                            <select class="form-select form-select-sm mb-1 start-time" data-key="${scheduleKey}" 
-                                    onchange="updateShiftTime('${scheduleKey}', 'start', event)"
-                                    ${!isAdminMode ? 'disabled' : ''} style="min-width: 95px;">
-                                    
-                                ${SPECIAL_SHIFTS.map(shift => `<option value="${shift}" ${shift === specialShift ? 'selected' : ''}>${shift}</option>`).join('')}
-                                
-                                <option disabled>──────────</option>
-                                
-                                ${TIME_OPTIONS.filter(t => t !== "------").map(time => `<option value="${time}" ${time === startTime ? 'selected' : ''}>${time}</option>`).join('')}
-                                
-                            </select>
-                            
-                            <select class="form-select form-select-sm end-time" data-key="${scheduleKey}" 
-                                    onchange="updateShiftTime('${scheduleKey}', 'end', event)"
-                                    ${!isAdminMode ? 'disabled' : ''} style="min-width: 95px;">
-                                ${TIME_OPTIONS.map(time => `<option value="${time}" ${time === endTime ? 'selected' : ''}>${time}</option>`).join('')}
-                            </select>
-                            
-                            <span class="shift-label fw-bold mt-1" style="font-size: 0.9em;">${displayValue}</span>
-                        </div>
-                    `;
+                                <div class="d-flex flex-row align-items-center justify-content-center w-100">
+                                    <span class="me-1 fw-bold" style="font-size: 0.85em; width: 40px;">Fin:</span>
+                                    <select class="form-select form-select-sm end-time" data-key="${scheduleKey}" 
+                                            onchange="updateShiftTime('${scheduleKey}', 'end', event)"
+                                            style="min-width: 95px;">
+                                        ${TIME_OPTIONS.map(time => `<option value="${time}" ${time === endTime ? 'selected' : ''}>${time}</option>`).join('')}
+                                    </select>
+                                </div>
+
+                                <span class="shift-label d-none" style="font-size: 0.9em;">${displayValue}</span>
+                            </div>
+                        `;
+                    } else {
+                        // Mode Lecture Seule: Afficher uniquement le texte de l'horaire ou N/D
+                        cell.innerHTML = `
+                            <div class="d-flex flex-column align-items-center position-relative">
+                                <span class="shift-label fw-bold" style="font-size: 1.1em;">${displayValue}</span>
+                            </div>
+                        `;
+                    }
                 });
             });
         }
@@ -413,7 +419,6 @@ function applyDisplayFilter(deptToFilter) {
                 isCurrentDeptRowVisible = true;
                 row.style.display = '';
             } else {
-                isCurrentDeptRowVisible = false;
                 row.style.display = 'none';
             }
         } else if (row.classList.contains('employee-row')) { 

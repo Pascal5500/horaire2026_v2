@@ -104,3 +104,15 @@ body {
         background-color: #ffcccc !important; 
     }
 }
+/* Cache les sélecteurs et les libellés en mode lecture seule */
+.employee-row:not([data-admin-mode="true"]) .start-time,
+.employee-row:not([data-admin-mode="true"]) .end-time,
+.employee-row:not([data-admin-mode="true"]) .availability-check,
+.employee-row:not([data-admin-mode="true"]) .w-100 { /* Cible les libellés Début/Fin */
+    display: none !important;
+}
+
+/* Affiche le shift-label en mode lecture seule */
+.employee-row:not([data-admin-mode="true"]) .shift-label {
+    display: block !important;
+}
