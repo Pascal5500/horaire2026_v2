@@ -6,7 +6,6 @@ let currentDisplayFilter = 'all';
 
 // Ces variables sont mises à jour par les écouteurs Firebase
 let employees = [];
-// Shifts spéciaux (Congé, Maladie)
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé"]; 
 let scheduleData = {}; 
 
@@ -78,7 +77,7 @@ function disableAdminMode() {
     const passwordInput = document.getElementById('adminPassword');
     passwordInput.disabled = false;
     document.getElementById('adminAuthButton').disabled = false;
-    passwordInput.placeholder = 'Mot de passe admin (1000)';
+    passwordInput.placeholder = '';
     document.getElementById('adminPanel').style.display = 'none';
     generateSchedule();
     alert("Mode Administrateur désactivé.");
@@ -147,31 +146,24 @@ function updateShiftTime(scheduleKey, type, event) {
     
     let shiftToSave = null;
 
-    // Si le menu de Début est une option spéciale (Congé, Maladie, etc.)
     if (SPECIAL_SHIFTS.includes(startValue) && startValue !== "------") {
         shiftToSave = startValue;
         
-        // On force le menu de Fin à "------" pour éviter la confusion
         if (endTimeSelect.value !== "------") {
              endTimeSelect.value = "------";
              endValue = "------";
         }
 
-    } 
-    // Sinon, on tente de former une plage horaire
-    else if (startValue !== "------" || endValue !== "------") {
+    } else if (startValue !== "------" || endValue !== "------") {
         shiftToSave = `${startValue}-${endValue}`;
     }
 
-    // Sauvegarde ou suppression de la donnée
     if (shiftToSave === null || shiftToSave === "------" || shiftToSave === "------" + "-" + "------") {
         delete scheduleData[scheduleKey];
-        // En mode admin, la span d'affichage est cachée, mais on la met à jour pour l'impression
         container.querySelector('.shift-label').textContent = "------"; 
     } else {
         scheduleData[scheduleKey] = shiftToSave;
         
-        // Met à jour l'étiquette (cachée en admin, visible en non-admin et pour l'impression)
         const displayValue = SPECIAL_SHIFTS.includes(shiftToSave) 
                             ? shiftToSave 
                             : shiftToSave.replace('-', ' à ');
@@ -250,6 +242,7 @@ function changeWeek(delta) {
     generateSchedule();
 }
 
+// Mise à jour de la disponibilité (Utilisable par tous)
 function updateAvailability(event) {
     const checkbox = event.target;
     const scheduleKey = checkbox.getAttribute('data-key');
@@ -287,7 +280,7 @@ function generateSchedule() {
 
 
     // 2. Générer l'en-tête du tableau 
-    tableHeader.innerHTML = '<th>Département / Employé</th>';
+    tableHeader.innerHTML = '<th>Employé</th>';
     dates.forEach(date => {
         const day = date.toLocaleDateString('fr-FR', { weekday: 'short' });
         const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric' });
@@ -341,20 +334,24 @@ function generateSchedule() {
                         cell.classList.add('not-available');
                     }
                     
+                    // Détermine si les menus déroulants sont affichés ou non
+                    const showTimeSelectors = isAdminMode; 
+                    
                     // --- STRUCTURE DE LA CELLULE AVEC LES LIBELLÉS "DÉBUT" ET "FIN" ---
-                    if (isAdminMode) {
-                        // Mode Admin: Afficher les libellés et les menus
-                        cell.innerHTML = `
-                            <div class="d-flex flex-column align-items-center position-relative">
-                                
-                                <div class="form-check form-check-inline availability-check">
-                                    <input class="form-check-input" type="checkbox" data-key="${scheduleKey}" 
-                                        id="nd-${scheduleKey}" onchange="updateAvailability(event)"
-                                        ${isNotAvailable ? 'checked' : ''}>
-                                    <label class="form-check-label fw-bold" for="nd-${scheduleKey}">N/D</label>
-                                </div>
-                                
-                                <div class="d-flex flex-row align-items-center justify-content-center w-100 mb-1">
+                    cell.innerHTML = `
+                        <div class="d-flex flex-column align-items-center position-relative">
+                            
+                            <div class="form-check form-check-inline availability-check">
+                                <input class="form-check-input" type="checkbox" data-key="${scheduleKey}" 
+                                       id="nd-${scheduleKey}" onchange="updateAvailability(event)"
+                                       ${isNotAvailable ? 'checked' : ''}>
+                                <label class="form-check-label fw-bold" for="nd-${scheduleKey}">N/D</label>
+                            </div>
+                            
+                            ${showTimeSelectors ? 
+                                // Mode Admin: Afficher les menus
+                                `
+                                <div class="d-flex flex-row align-items-center justify-content-center w-100 mb-1" style="margin-top: 15px;">
                                     <span class="me-1 fw-bold" style="font-size: 0.85em; width: 40px;">Début:</span>
                                     <select class="form-select form-select-sm start-time" data-key="${scheduleKey}" 
                                             onchange="updateShiftTime('${scheduleKey}', 'start', event)"
@@ -373,18 +370,16 @@ function generateSchedule() {
                                         ${TIME_OPTIONS.map(time => `<option value="${time}" ${time === endTime ? 'selected' : ''}>${time}</option>`).join('')}
                                     </select>
                                 </div>
-
                                 <span class="shift-label d-none" style="font-size: 0.9em;">${displayValue}</span>
-                            </div>
-                        `;
-                    } else {
-                        // Mode Lecture Seule: Afficher uniquement le texte de l'horaire ou N/D
-                        cell.innerHTML = `
-                            <div class="d-flex flex-column align-items-center position-relative">
-                                <span class="shift-label fw-bold" style="font-size: 1.1em;">${displayValue}</span>
-                            </div>
-                        `;
-                    }
+                                `
+                                : 
+                                // Mode Lecture Seule: Afficher uniquement le texte
+                                `
+                                <span class="shift-label fw-bold mt-3" style="font-size: 1.1em;">${displayValue}</span>
+                                `
+                            }
+                        </div>
+                    `;
                 });
             });
         }
@@ -478,7 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Erreur de connexion Firebase lors de l'initialisation:", e);
     }
 
-    // Initialisation de la date au Dimanche de cette semaine
     const today = new Date();
     const currentSunday = getSundayOfWeek(today); 
     
