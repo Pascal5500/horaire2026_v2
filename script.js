@@ -166,7 +166,6 @@ function addContact() {
     const phone = phoneInput.value.trim();
 
     if (name && phone) {
-        // Un id unique est nécessaire, même pour les contacts
         contacts.push({ id: Date.now(), name, phone });
         nameInput.value = '';
         phoneInput.value = '';
@@ -190,7 +189,7 @@ function renderAdminLists() {
     DEPARTMENTS.forEach(dept => {
         const deptEmployees = employees.filter(emp => emp && emp.dept === dept);
         const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-12 mb-2';
+        colDiv.className = 'col-md-12 mb-2'; // Utilise toute la colonne pour la liste des employés
         colDiv.innerHTML = `
             <h6>${dept}</h6>
             <ul class="list-group">
