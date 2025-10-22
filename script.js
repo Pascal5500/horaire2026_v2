@@ -4,11 +4,10 @@ const ADMIN_PASSWORD = '1000';
 let isAdminMode = false;
 let currentDisplayFilter = 'all'; 
 
-// Ces variables sont mises à jour par les écouteurs Firebase
-let employees = [];
 // Shifts spéciaux (Congé, Maladie, Non-Disponible)
-// NOTE: "Non-Disponible" a été ajouté ici.
+// La valeur est "Non-Disponible" (sans faute de frappe)
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "Non-Disponible"]; 
+let employees = [];
 let scheduleData = {}; 
 
 
@@ -103,9 +102,8 @@ function addEmployee() {
 
 function removeEmployee(id) {
     employees = employees.filter(emp => emp.id !== Number(id)); 
-    // Suppression des anciennes clés de disponibilité (obsolètes) et des horaires de cet employé
     Object.keys(scheduleData).forEach(key => {
-        if (key.startsWith(`${id}-`) || key.startsWith(`avail-${id}-`)) {
+        if (key.startsWith(`${id}-`)) {
             delete scheduleData[key];
         }
     });
@@ -153,7 +151,6 @@ function updateShiftTime(scheduleKey, type, event) {
     if (SPECIAL_SHIFTS.includes(startValue) && startValue !== "------") {
         shiftToSave = startValue;
         
-        // On force le menu de Fin à "------" pour éviter la confusion
         if (endTimeSelect.value !== "------") {
              endTimeSelect.value = "------";
              endValue = "------";
@@ -168,13 +165,14 @@ function updateShiftTime(scheduleKey, type, event) {
     if (shiftToSave === null || shiftToSave === "------" || shiftToSave === "------" + "-" + "------") {
         delete scheduleData[scheduleKey];
         container.querySelector('.shift-label').textContent = "------"; 
-        container.classList.remove('not-available'); // S'assure de retirer la couleur N/D
+        container.classList.remove('not-available'); // Retire la couleur
     } else {
         scheduleData[scheduleKey] = shiftToSave;
         
+        // CORRECTION DE L'AFFICHAGE ET DE LA COULEUR
         const displayValue = SPECIAL_SHIFTS.includes(shiftToSave) 
                             ? shiftToSave 
-                            : shiftToSave.replace('-', ' à ');
+                            : shiftToSave.replace('-', ' à '); // Format "6h à 12h30"
                             
         container.querySelector('.shift-label').textContent = displayValue;
 
@@ -257,8 +255,6 @@ function changeWeek(delta) {
     generateSchedule();
 }
 
-// NOTE: La fonction updateAvailability est supprimée
-
 function generateSchedule() {
     const startDateInput = document.getElementById('startDate').value;
     if (!startDateInput) return;
@@ -314,15 +310,17 @@ function generateSchedule() {
                     
                     if (shiftData) {
                         if (shiftData.includes('-')) {
+                            // Format heure: "HH:MM-HH:MM" -> Affichage: "HH:MM à HH:MM"
                             [startTime, endTime] = shiftData.split('-');
                             displayValue = shiftData.replace('-', ' à ');
                         } else {
+                            // Format spécial: "Congé" -> Affichage: "Congé"
                             specialShift = shiftData;
                             displayValue = specialShift;
                         }
                     }
 
-                    // Ajoute la classe pour la couleur N/D si c'est le cas
+                    // Ajoute la classe N/D si le shift est "Non-Disponible"
                     if (displayValue === "Non-Disponible") {
                         cell.classList.add('not-available');
                     } else {
@@ -331,13 +329,12 @@ function generateSchedule() {
                     
                     const showTimeSelectors = isAdminMode; 
                     
-                    // --- STRUCTURE DE LA CELLULE AVEC LES LIBELLÉS "DÉBUT" ET "FIN" ---
-                    cell.innerHTML = `
-                        <div class="d-flex flex-column align-items-center position-relative">
-                            
-                            ${showTimeSelectors ? 
-                                // Mode Admin: Afficher les menus
-                                `
+                    // --- STRUCTURE DE LA CELLULE ---
+                    if (showTimeSelectors) {
+                        // Mode Admin: Afficher les menus
+                        cell.innerHTML = `
+                            <div class="d-flex flex-column align-items-center position-relative">
+                                
                                 <div class="d-flex flex-row align-items-center justify-content-center w-100 mb-1">
                                     <span class="me-1 fw-bold" style="font-size: 0.85em; width: 40px;">Début:</span>
                                     <select class="form-select form-select-sm start-time" data-key="${scheduleKey}" 
@@ -358,15 +355,16 @@ function generateSchedule() {
                                     </select>
                                 </div>
                                 <span class="shift-label d-none" style="font-size: 0.9em;">${displayValue}</span>
-                                `
-                                : 
-                                // Mode Lecture Seule: Afficher uniquement le texte
-                                `
+                            </div>
+                        `;
+                    } else {
+                        // Mode Lecture Seule: Afficher uniquement le texte
+                        cell.innerHTML = `
+                            <div class="d-flex flex-column align-items-center position-relative">
                                 <span class="shift-label fw-bold" style="font-size: 1.1em;">${displayValue}</span>
-                                `
-                            }
-                        </div>
-                    `;
+                            </div>
+                        `;
+                    }
                 });
             });
         }

@@ -129,3 +129,7 @@ body {
 .table-responsive table tbody td.not-available {
     background-color: #fce4e4 !important; /* Rouge très pâle */
 }
+/* Ajustement CSS pour le mode Administrateur (pour aligner Début/Fin) */
+.d-flex.flex-column.align-items-center > .d-flex.flex-row.align-items-center.w-100 {
+    margin-top: 5px; /* Petit espace entre les lignes Début et Fin */
+}
