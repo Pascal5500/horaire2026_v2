@@ -4,9 +4,9 @@ const ADMIN_PASSWORD = '1000';
 let isAdminMode = false;
 let currentDisplayFilter = 'all'; 
 
+// Shifts spéciaux (N/D est le nouveau standard)
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "N/D"]; 
 let employees = [];
-let contacts = []; // NOUVEAU: Pour les contacts avec téléphone
 let scheduleData = {}; 
 
 
@@ -34,10 +34,6 @@ function saveEmployees() {
     db.ref('employees').set(employees);
 }
 
-function saveContacts() {
-    db.ref('contacts').set(contacts);
-}
-
 function saveSchedule() {
     db.ref('scheduleData').set(scheduleData);
 }
@@ -49,19 +45,18 @@ function syncDataFromFirebase() {
         generateSchedule(); 
     });
 
-    // NOUVEAU: Écoute des changements de contacts
-    db.ref('contacts').on('value', (snapshot) => {
-        contacts = snapshot.val() || [];
-        renderAdminLists(); // Met à jour la liste des contacts
-    });
-
     db.ref('scheduleData').on('value', (snapshot) => {
         let needsSave = false;
         scheduleData = snapshot.val() || {};
         
-        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CORRECTION DE LA FAUTE DE FRAPPE VERS "N/D" ---
+        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CONVERSION VERS LE NOUVEAU STANDARD "N/D" ---
         const CORRECT_VALUE = "N/D";
-        const TYPOS_TO_FIX = ["Non à Disponible", "non à disponible", "non à dispinible", "Non-Disponible"];
+        const TYPOS_TO_FIX = [
+            "Non à Disponible", 
+            "non à disponible", 
+            "non à dispinible",
+            "Non-Disponible" 
+        ];
         
         Object.keys(scheduleData).forEach(key => {
             const currentShift = scheduleData[key];
@@ -81,7 +76,7 @@ function syncDataFromFirebase() {
     });
 }
 
-// --- FONCTIONS D'AUTHENTIFICATION (inchangées) ---
+// --- FONCTIONS D'AUTHENTIFICATION ---
 function authenticateAdmin() {
     const passwordInput = document.getElementById('adminPassword');
     if (passwordInput.value === ADMIN_PASSWORD) {
@@ -114,9 +109,8 @@ function disableAdminMode() {
 }
 
 
-// --- GESTION DES EMPLOYÉS ET CONTACTS (ADMIN) ---
+// --- GESTION DES EMPLOYÉS (ADMIN) ---
 
-// Employés réguliers (pour l'horaire)
 function addEmployee() {
     const nameInput = document.getElementById('newEmployeeName');
     const deptInput = document.getElementById('newEmployeeDept');
@@ -141,36 +135,14 @@ function removeEmployee(id) {
     saveSchedule();
 }
 
-// NOUVEAU: Ajouter un contact externe / pool
-function addContact() {
-    const nameInput = document.getElementById('newContactName');
-    const phoneInput = document.getElementById('newContactPhone');
-    const name = nameInput.value.trim();
-    const phone = phoneInput.value.trim();
-
-    if (name && phone) {
-        contacts.push({ id: Date.now(), name, phone });
-        nameInput.value = '';
-        phoneInput.value = '';
-        saveContacts();
-    }
-}
-
-function removeContact(id) {
-    contacts = contacts.filter(contact => contact.id !== Number(id));
-    saveContacts();
-}
-
-
 function renderAdminLists() {
-    // 1. Liste des Employés réguliers (pour l'horaire)
-    const employeesListContainer = document.getElementById('employeesListContainer');
-    employeesListContainer.innerHTML = '';
+    const listContainer = document.getElementById('employeesListContainer');
+    listContainer.innerHTML = '';
 
     DEPARTMENTS.forEach(dept => {
         const deptEmployees = employees.filter(emp => emp.dept === dept);
         const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-12 mb-2'; // Utilise toute la colonne pour la liste des employés
+        colDiv.className = 'col-md-12 mb-2';
         colDiv.innerHTML = `
             <h6>${dept}</h6>
             <ul class="list-group">
@@ -182,30 +154,12 @@ function renderAdminLists() {
                 `).join('')}
             </ul>
         `;
-        employeesListContainer.appendChild(colDiv);
+        listContainer.appendChild(colDiv);
     });
-
-    // 2. Liste des Contacts externes (avec téléphone)
-    const contactsListContainer = document.getElementById('contactsListContainer');
-    contactsListContainer.innerHTML = '';
-
-    const ul = document.createElement('ul');
-    ul.className = 'list-group';
-
-    contacts.forEach(contact => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item d-flex justify-content-between align-items-center small';
-        li.innerHTML = `
-            <span>${contact.name} (${contact.phone})</span>
-            <button class="btn btn-sm btn-danger" onclick="removeContact(${contact.id})">X</button>
-        `;
-        ul.appendChild(li);
-    });
-    contactsListContainer.appendChild(ul);
 }
 
 
-// --- LOGIQUE DE SAISIE DOUBLE MENU (inchangée) ---
+// --- LOGIQUE DE SAISIE DOUBLE MENU ---
 
 function updateShiftTime(scheduleKey, type, event) {
     const container = event.target.closest('td');
@@ -253,7 +207,7 @@ function updateShiftTime(scheduleKey, type, event) {
 }
 
 
-// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE (inchangée) ---
+// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE ---
 
 function createLocalMidnightDate(dateString) {
     if (!dateString) return new Date(); 
@@ -436,7 +390,7 @@ function generateSchedule() {
 }
 
 
-// --- FONCTIONS DE FILTRAGE ET EXPORT (inchangée) ---
+// --- FONCTIONS DE FILTRAGE ET EXPORT (inchangées) ---
 
 function filterByButton(button, dept) {
     const buttons = document.querySelectorAll('.d-flex.gap-2 button');
