@@ -4,9 +4,9 @@ const ADMIN_PASSWORD = '1000';
 let isAdminMode = false;
 let currentDisplayFilter = 'all'; 
 
-// Shifts spéciaux (N/D est le nouveau standard)
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "N/D"]; 
 let employees = [];
+let contacts = []; // NOUVEAU: Pour les contacts avec téléphone
 let scheduleData = {}; 
 
 
@@ -34,15 +34,38 @@ function saveEmployees() {
     db.ref('employees').set(employees);
 }
 
+function saveContacts() {
+    db.ref('contacts').set(contacts);
+}
+
 function saveSchedule() {
     db.ref('scheduleData').set(scheduleData);
 }
 
 function syncDataFromFirebase() {
     db.ref('employees').on('value', (snapshot) => {
-        employees = snapshot.val() || [];
+        let rawEmployees = snapshot.val();
+        if (rawEmployees && !Array.isArray(rawEmployees)) {
+            employees = Object.values(rawEmployees);
+        } else {
+            employees = rawEmployees || [];
+        }
+        employees = employees.filter(e => e !== null);
+        
         renderAdminLists();
         generateSchedule(); 
+    });
+
+    // NOUVEAU: Écoute des contacts
+    db.ref('contacts').on('value', (snapshot) => {
+        let rawContacts = snapshot.val();
+        if (rawContacts && !Array.isArray(rawContacts)) {
+            contacts = Object.values(rawContacts);
+        } else {
+            contacts = rawContacts || [];
+        }
+        contacts = contacts.filter(c => c !== null);
+        renderAdminLists();
     });
 
     db.ref('scheduleData').on('value', (snapshot) => {
@@ -68,7 +91,6 @@ function syncDataFromFirebase() {
         // --- FIN ROUTINE DE NETTOYAGE ---
 
         if (needsSave) {
-            console.log("Correction automatique des chaînes de disponibilité vers N/D.");
             saveSchedule();
         }
 
@@ -76,7 +98,7 @@ function syncDataFromFirebase() {
     });
 }
 
-// --- FONCTIONS D'AUTHENTIFICATION ---
+// --- FONCTIONS D'AUTHENTIFICATION (inchangées) ---
 function authenticateAdmin() {
     const passwordInput = document.getElementById('adminPassword');
     if (passwordInput.value === ADMIN_PASSWORD) {
@@ -109,8 +131,9 @@ function disableAdminMode() {
 }
 
 
-// --- GESTION DES EMPLOYÉS (ADMIN) ---
+// --- GESTION DES EMPLOYÉS ET CONTACTS (ADMIN) ---
 
+// 1. Employés réguliers (pour l'horaire)
 function addEmployee() {
     const nameInput = document.getElementById('newEmployeeName');
     const deptInput = document.getElementById('newEmployeeDept');
@@ -135,12 +158,37 @@ function removeEmployee(id) {
     saveSchedule();
 }
 
+// 2. NOUVEAU: Ajouter un contact externe / pool
+function addContact() {
+    const nameInput = document.getElementById('newContactName');
+    const phoneInput = document.getElementById('newContactPhone');
+    const name = nameInput.value.trim();
+    const phone = phoneInput.value.trim();
+
+    if (name && phone) {
+        // Un id unique est nécessaire, même pour les contacts
+        contacts.push({ id: Date.now(), name, phone });
+        nameInput.value = '';
+        phoneInput.value = '';
+        saveContacts();
+    }
+}
+
+function removeContact(id) {
+    contacts = contacts.filter(contact => contact.id !== Number(id));
+    saveContacts();
+}
+
+
 function renderAdminLists() {
-    const listContainer = document.getElementById('employeesListContainer');
-    listContainer.innerHTML = '';
+    // 1. Liste des Employés réguliers (pour l'horaire)
+    const employeesListContainer = document.getElementById('employeesListContainer');
+    if (!employeesListContainer) return; 
+
+    employeesListContainer.innerHTML = '';
 
     DEPARTMENTS.forEach(dept => {
-        const deptEmployees = employees.filter(emp => emp.dept === dept);
+        const deptEmployees = employees.filter(emp => emp && emp.dept === dept);
         const colDiv = document.createElement('div');
         colDiv.className = 'col-md-12 mb-2';
         colDiv.innerHTML = `
@@ -154,12 +202,32 @@ function renderAdminLists() {
                 `).join('')}
             </ul>
         `;
-        listContainer.appendChild(colDiv);
+        employeesListContainer.appendChild(colDiv);
     });
+
+    // 2. Liste des Contacts externes (avec téléphone)
+    const contactsListContainer = document.getElementById('contactsListContainer');
+    if (!contactsListContainer) return; 
+    
+    contactsListContainer.innerHTML = '';
+
+    const ul = document.createElement('ul');
+    ul.className = 'list-group';
+
+    contacts.forEach(contact => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center small';
+        li.innerHTML = `
+            <span>${contact.name} (${contact.phone})</span>
+            <button class="btn btn-sm btn-danger" onclick="removeContact(${contact.id})">X</button>
+        `;
+        ul.appendChild(li);
+    });
+    contactsListContainer.appendChild(ul);
 }
 
 
-// --- LOGIQUE DE SAISIE DOUBLE MENU ---
+// --- LOGIQUE DE SAISIE DOUBLE MENU (inchangée) ---
 
 function updateShiftTime(scheduleKey, type, event) {
     const container = event.target.closest('td');
@@ -207,7 +275,7 @@ function updateShiftTime(scheduleKey, type, event) {
 }
 
 
-// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE ---
+// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE (inchangée) ---
 
 function createLocalMidnightDate(dateString) {
     if (!dateString) return new Date(); 
@@ -300,7 +368,7 @@ function generateSchedule() {
     let currentRow = 0;
 
     DEPARTMENTS.forEach(dept => {
-        const deptEmployees = employees.filter(emp => emp.dept === dept);
+        const deptEmployees = employees.filter(emp => emp && emp.dept === dept);
 
         if (deptEmployees.length > 0) {
             const deptRow = tableBody.insertRow(currentRow++);
