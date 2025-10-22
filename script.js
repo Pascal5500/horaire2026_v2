@@ -102,7 +102,7 @@ function disableAdminMode() {
     const passwordInput = document.getElementById('adminPassword');
     passwordInput.disabled = false;
     document.getElementById('adminAuthButton').disabled = false;
-    passwordInput.placeholder = 'Mot de passe admin (1000)';
+    passwordInput.placeholder = '';
     document.getElementById('adminPanel').style.display = 'none';
     generateSchedule();
     alert("Mode Administrateur désactivé.");
@@ -289,7 +289,7 @@ function generateSchedule() {
     const tableBody = document.getElementById('tableBody'); 
     
     // 1. Générer l'en-tête du tableau 
-    tableHeader.innerHTML = '<th>Département / Employé</th>';
+    tableHeader.innerHTML = '<th>Employé</th>';
     dates.forEach(date => {
         const day = date.toLocaleDateString('fr-FR', { weekday: 'short' });
         const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric' });
