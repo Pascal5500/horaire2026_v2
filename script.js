@@ -5,7 +5,7 @@ let isAdminMode = false;
 let currentDisplayFilter = 'all'; 
 
 // Shifts spéciaux (Congé, Maladie, Non-Disponible)
-// La valeur est "Non-Disponible" (sans faute de frappe)
+// Correction de la faute de frappe dans les valeurs stockées si nécessaire
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "Non-Disponible"]; 
 let employees = [];
 let scheduleData = {}; 
@@ -59,7 +59,6 @@ function authenticateAdmin() {
         isAdminMode = true;
         passwordInput.value = '';
         passwordInput.placeholder = 'Mode Admin Activé';
-        passwordInput.disabled = true; 
         document.getElementById('adminAuthButton').disabled = true;
         document.getElementById('adminPanel').style.display = 'block';
         generateSchedule();
@@ -151,6 +150,7 @@ function updateShiftTime(scheduleKey, type, event) {
     if (SPECIAL_SHIFTS.includes(startValue) && startValue !== "------") {
         shiftToSave = startValue;
         
+        // On force le menu de Fin à "------" pour éviter la confusion
         if (endTimeSelect.value !== "------") {
              endTimeSelect.value = "------";
              endValue = "------";
