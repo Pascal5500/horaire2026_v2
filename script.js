@@ -6,7 +6,9 @@ let currentDisplayFilter = 'all';
 
 // Ces variables sont mises à jour par les écouteurs Firebase
 let employees = [];
-const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé"]; 
+// Shifts spéciaux (Congé, Maladie, Non-Disponible)
+// NOTE: "Non-Disponible" a été ajouté ici.
+const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "Non-Disponible"]; 
 let scheduleData = {}; 
 
 
@@ -101,8 +103,9 @@ function addEmployee() {
 
 function removeEmployee(id) {
     employees = employees.filter(emp => emp.id !== Number(id)); 
+    // Suppression des anciennes clés de disponibilité (obsolètes) et des horaires de cet employé
     Object.keys(scheduleData).forEach(key => {
-        if (key.startsWith(`${id}-`)) {
+        if (key.startsWith(`${id}-`) || key.startsWith(`avail-${id}-`)) {
             delete scheduleData[key];
         }
     });
@@ -146,21 +149,26 @@ function updateShiftTime(scheduleKey, type, event) {
     
     let shiftToSave = null;
 
+    // Si le menu de Début est une option spéciale (Congé, Maladie, N/D, etc.)
     if (SPECIAL_SHIFTS.includes(startValue) && startValue !== "------") {
         shiftToSave = startValue;
         
+        // On force le menu de Fin à "------" pour éviter la confusion
         if (endTimeSelect.value !== "------") {
              endTimeSelect.value = "------";
              endValue = "------";
         }
-
-    } else if (startValue !== "------" || endValue !== "------") {
+    } 
+    // Sinon, on tente de former une plage horaire
+    else if (startValue !== "------" || endValue !== "------") {
         shiftToSave = `${startValue}-${endValue}`;
     }
 
+    // Sauvegarde ou suppression de la donnée
     if (shiftToSave === null || shiftToSave === "------" || shiftToSave === "------" + "-" + "------") {
         delete scheduleData[scheduleKey];
         container.querySelector('.shift-label').textContent = "------"; 
+        container.classList.remove('not-available'); // S'assure de retirer la couleur N/D
     } else {
         scheduleData[scheduleKey] = shiftToSave;
         
@@ -169,6 +177,13 @@ function updateShiftTime(scheduleKey, type, event) {
                             : shiftToSave.replace('-', ' à ');
                             
         container.querySelector('.shift-label').textContent = displayValue;
+
+        // Met à jour la classe pour la couleur N/D
+        if (shiftToSave === "Non-Disponible") {
+            container.classList.add('not-available');
+        } else {
+            container.classList.remove('not-available');
+        }
     }
 
     saveSchedule(); 
@@ -242,29 +257,7 @@ function changeWeek(delta) {
     generateSchedule();
 }
 
-// Mise à jour de la disponibilité (Utilisable par tous)
-function updateAvailability(event) {
-    const checkbox = event.target;
-    const scheduleKey = checkbox.getAttribute('data-key');
-    const isChecked = checkbox.checked;
-
-    const availabilityKey = `avail-${scheduleKey}`;
-
-    if (isChecked) {
-        scheduleData[availabilityKey] = true;
-    } else {
-        delete scheduleData[availabilityKey];
-    }
-    
-    const cell = checkbox.closest('td');
-    if (isChecked) {
-        cell.classList.add('not-available');
-    } else {
-        cell.classList.remove('not-available');
-    }
-
-    saveSchedule(); 
-}
+// NOTE: La fonction updateAvailability est supprimée
 
 function generateSchedule() {
     const startDateInput = document.getElementById('startDate').value;
@@ -312,8 +305,7 @@ function generateSchedule() {
                     
                     const scheduleKey = `${emp.id}-${dateKey}`;
                     const shiftData = scheduleData[scheduleKey]; 
-                    const isNotAvailable = scheduleData[`avail-${scheduleKey}`] || false; 
-
+                    
                     // Initialisation des valeurs
                     let startTime = "------";
                     let endTime = "------";
@@ -330,28 +322,23 @@ function generateSchedule() {
                         }
                     }
 
-                    if (isNotAvailable) {
+                    // Ajoute la classe pour la couleur N/D si c'est le cas
+                    if (displayValue === "Non-Disponible") {
                         cell.classList.add('not-available');
+                    } else {
+                        cell.classList.remove('not-available');
                     }
                     
-                    // Détermine si les menus déroulants sont affichés ou non
                     const showTimeSelectors = isAdminMode; 
                     
                     // --- STRUCTURE DE LA CELLULE AVEC LES LIBELLÉS "DÉBUT" ET "FIN" ---
                     cell.innerHTML = `
                         <div class="d-flex flex-column align-items-center position-relative">
                             
-                            <div class="form-check form-check-inline availability-check">
-                                <input class="form-check-input" type="checkbox" data-key="${scheduleKey}" 
-                                       id="nd-${scheduleKey}" onchange="updateAvailability(event)"
-                                       ${isNotAvailable ? 'checked' : ''}>
-                                <label class="form-check-label fw-bold" for="nd-${scheduleKey}">N/D</label>
-                            </div>
-                            
                             ${showTimeSelectors ? 
                                 // Mode Admin: Afficher les menus
                                 `
-                                <div class="d-flex flex-row align-items-center justify-content-center w-100 mb-1" style="margin-top: 15px;">
+                                <div class="d-flex flex-row align-items-center justify-content-center w-100 mb-1">
                                     <span class="me-1 fw-bold" style="font-size: 0.85em; width: 40px;">Début:</span>
                                     <select class="form-select form-select-sm start-time" data-key="${scheduleKey}" 
                                             onchange="updateShiftTime('${scheduleKey}', 'start', event)"
@@ -375,7 +362,7 @@ function generateSchedule() {
                                 : 
                                 // Mode Lecture Seule: Afficher uniquement le texte
                                 `
-                                <span class="shift-label fw-bold mt-3" style="font-size: 1.1em;">${displayValue}</span>
+                                <span class="shift-label fw-bold" style="font-size: 1.1em;">${displayValue}</span>
                                 `
                             }
                         </div>

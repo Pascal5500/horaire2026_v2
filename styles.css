@@ -116,3 +116,16 @@ body {
 .employee-row:not([data-admin-mode="true"]) .shift-label {
     display: block !important;
 }
+
+/* Ajoute de l'espace pour l'alignement vertical */
+.employee-row .shift-label {
+    min-height: 40px; /* Assure un minimum de hauteur pour la cellule en lecture seule */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Règle CSS pour colorer les cellules "Non-Disponible" */
+.table-responsive table tbody td.not-available {
+    background-color: #fce4e4 !important; /* Rouge très pâle */
+}
