@@ -4,8 +4,8 @@ const ADMIN_PASSWORD = '1000';
 let isAdminMode = false;
 let currentDisplayFilter = 'all'; 
 
-// Shifts spéciaux (La valeur correcte est "Non-Disponible")
-const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "Non-Disponible"]; 
+// NOUVEAU STANDARD : Utilisation de "N/D"
+const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "N/D"]; 
 let employees = [];
 let scheduleData = {}; 
 
@@ -49,12 +49,13 @@ function syncDataFromFirebase() {
         let needsSave = false;
         scheduleData = snapshot.val() || {};
         
-        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CORRECTION DES ANCIENNES FAUTES DE FRAPPE ---
-        const CORRECT_VALUE = "Non-Disponible";
+        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CONVERSION VERS LE NOUVEAU STANDARD "N/D" ---
+        const CORRECT_VALUE = "N/D";
         const TYPOS_TO_FIX = [
-            "Non à Disponible", // Faute de frappe exacte de l'image
+            "Non à Disponible", // Faute de frappe de l'image
             "non à disponible", 
-            "non à dispinible" 
+            "non à dispinible",
+            "Non-Disponible" // Conversion de l'ancien correct vers le nouveau (N/D)
         ];
         
         Object.keys(scheduleData).forEach(key => {
@@ -67,7 +68,7 @@ function syncDataFromFirebase() {
         // --- FIN ROUTINE DE NETTOYAGE ---
 
         if (needsSave) {
-            console.log("Correction automatique des fautes de frappe de disponibilité (Non à Disponible -> Non-Disponible).");
+            console.log("Correction automatique des chaînes de disponibilité (Typos et Non-Disponible -> N/D).");
             saveSchedule();
         }
 
@@ -101,7 +102,7 @@ function disableAdminMode() {
     const passwordInput = document.getElementById('adminPassword');
     passwordInput.disabled = false;
     document.getElementById('adminAuthButton').disabled = false;
-    passwordInput.placeholder = '';
+    passwordInput.placeholder = 'Mot de passe admin (1000)';
     document.getElementById('adminPanel').style.display = 'none';
     generateSchedule();
     alert("Mode Administrateur désactivé.");
@@ -174,7 +175,7 @@ function updateShiftTime(scheduleKey, type, event) {
     if (SPECIAL_SHIFTS.includes(startValue) && startValue !== "------") {
         shiftToSave = startValue;
         
-        // CORRECTION DE L'EFFACEMENT : Force le menu de Fin à "------" si un shift spécial est sélectionné
+        // Force le menu de Fin à "------" si un shift spécial est sélectionné
         if (endTimeSelect.value !== "------") {
              endTimeSelect.value = "------";
              endValue = "------";
@@ -200,8 +201,8 @@ function updateShiftTime(scheduleKey, type, event) {
                             
         container.querySelector('.shift-label').textContent = displayValue;
 
-        // Met à jour la classe pour la couleur N/D
-        if (shiftToSave === "Non-Disponible") {
+        // Met à jour la classe pour la couleur N/D (qui est maintenant "N/D")
+        if (shiftToSave === "N/D") {
             container.classList.add('not-available');
         } else {
             container.classList.remove('not-available');
@@ -288,7 +289,7 @@ function generateSchedule() {
     const tableBody = document.getElementById('tableBody'); 
     
     // 1. Générer l'en-tête du tableau 
-    tableHeader.innerHTML = '<th>Employé</th>';
+    tableHeader.innerHTML = '<th>Département / Employé</th>';
     dates.forEach(date => {
         const day = date.toLocaleDateString('fr-FR', { weekday: 'short' });
         const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric' });
@@ -332,14 +333,14 @@ function generateSchedule() {
                             [startTime, endTime] = shiftData.split('-');
                             displayValue = shiftData.replace('-', ' à ');
                         } else {
-                            // Format spécial: "Congé" ou "Non-Disponible"
+                            // Format spécial: "Congé" ou "N/D"
                             specialShift = shiftData;
                             displayValue = specialShift;
                         }
                     }
 
-                    // Applique la couleur rouge si c'est "Non-Disponible"
-                    if (displayValue === "Non-Disponible") {
+                    // Applique la couleur rouge si c'est "N/D"
+                    if (displayValue === "N/D") {
                         cell.classList.add('not-available');
                     } else {
                         cell.classList.remove('not-available');
@@ -420,6 +421,7 @@ function applyDisplayFilter(deptToFilter) {
                 row.style.display = 'none';
             }
         } else if (row.classList.contains('employee-row')) { 
+            // CORRECTION DE LOGIQUE DU FILTRE : Afficher si le département est visible et correspond
             if (isCurrentDeptRowVisible && (deptToFilter === 'all' || deptName === deptToFilter)) {
                 row.style.display = '';
             } else {
