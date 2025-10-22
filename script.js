@@ -4,9 +4,9 @@ const ADMIN_PASSWORD = '1000';
 let isAdminMode = false;
 let currentDisplayFilter = 'all'; 
 
-// NOUVEAU STANDARD : Utilisation de "N/D"
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "N/D"]; 
 let employees = [];
+let contacts = []; // NOUVEAU: Pour les contacts avec téléphone
 let scheduleData = {}; 
 
 
@@ -34,6 +34,10 @@ function saveEmployees() {
     db.ref('employees').set(employees);
 }
 
+function saveContacts() {
+    db.ref('contacts').set(contacts);
+}
+
 function saveSchedule() {
     db.ref('scheduleData').set(scheduleData);
 }
@@ -45,18 +49,19 @@ function syncDataFromFirebase() {
         generateSchedule(); 
     });
 
+    // NOUVEAU: Écoute des changements de contacts
+    db.ref('contacts').on('value', (snapshot) => {
+        contacts = snapshot.val() || [];
+        renderAdminLists(); // Met à jour la liste des contacts
+    });
+
     db.ref('scheduleData').on('value', (snapshot) => {
         let needsSave = false;
         scheduleData = snapshot.val() || {};
         
-        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CONVERSION VERS LE NOUVEAU STANDARD "N/D" ---
+        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CORRECTION DE LA FAUTE DE FRAPPE VERS "N/D" ---
         const CORRECT_VALUE = "N/D";
-        const TYPOS_TO_FIX = [
-            "Non à Disponible", // Faute de frappe de l'image
-            "non à disponible", 
-            "non à dispinible",
-            "Non-Disponible" // Conversion de l'ancien correct vers le nouveau (N/D)
-        ];
+        const TYPOS_TO_FIX = ["Non à Disponible", "non à disponible", "non à dispinible", "Non-Disponible"];
         
         Object.keys(scheduleData).forEach(key => {
             const currentShift = scheduleData[key];
@@ -68,7 +73,7 @@ function syncDataFromFirebase() {
         // --- FIN ROUTINE DE NETTOYAGE ---
 
         if (needsSave) {
-            console.log("Correction automatique des chaînes de disponibilité (Typos et Non-Disponible -> N/D).");
+            console.log("Correction automatique des chaînes de disponibilité vers N/D.");
             saveSchedule();
         }
 
@@ -109,8 +114,9 @@ function disableAdminMode() {
 }
 
 
-// --- GESTION DES EMPLOYÉS (ADMIN) ---
+// --- GESTION DES EMPLOYÉS ET CONTACTS (ADMIN) ---
 
+// Employés réguliers (pour l'horaire)
 function addEmployee() {
     const nameInput = document.getElementById('newEmployeeName');
     const deptInput = document.getElementById('newEmployeeDept');
@@ -135,31 +141,71 @@ function removeEmployee(id) {
     saveSchedule();
 }
 
+// NOUVEAU: Ajouter un contact externe / pool
+function addContact() {
+    const nameInput = document.getElementById('newContactName');
+    const phoneInput = document.getElementById('newContactPhone');
+    const name = nameInput.value.trim();
+    const phone = phoneInput.value.trim();
+
+    if (name && phone) {
+        contacts.push({ id: Date.now(), name, phone });
+        nameInput.value = '';
+        phoneInput.value = '';
+        saveContacts();
+    }
+}
+
+function removeContact(id) {
+    contacts = contacts.filter(contact => contact.id !== Number(id));
+    saveContacts();
+}
+
+
 function renderAdminLists() {
-    const listContainer = document.getElementById('employeesListContainer');
-    listContainer.innerHTML = '';
+    // 1. Liste des Employés réguliers (pour l'horaire)
+    const employeesListContainer = document.getElementById('employeesListContainer');
+    employeesListContainer.innerHTML = '';
 
     DEPARTMENTS.forEach(dept => {
         const deptEmployees = employees.filter(emp => emp.dept === dept);
         const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-3 mb-3';
+        colDiv.className = 'col-md-12 mb-2'; // Utilise toute la colonne pour la liste des employés
         colDiv.innerHTML = `
             <h6>${dept}</h6>
             <ul class="list-group">
                 ${deptEmployees.map(emp => `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <li class="list-group-item d-flex justify-content-between align-items-center small">
                         ${emp.name} 
                         <button class="btn btn-sm btn-danger" onclick="removeEmployee(${emp.id})">X</button>
                     </li>
                 `).join('')}
             </ul>
         `;
-        listContainer.appendChild(colDiv);
+        employeesListContainer.appendChild(colDiv);
     });
+
+    // 2. Liste des Contacts externes (avec téléphone)
+    const contactsListContainer = document.getElementById('contactsListContainer');
+    contactsListContainer.innerHTML = '';
+
+    const ul = document.createElement('ul');
+    ul.className = 'list-group';
+
+    contacts.forEach(contact => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center small';
+        li.innerHTML = `
+            <span>${contact.name} (${contact.phone})</span>
+            <button class="btn btn-sm btn-danger" onclick="removeContact(${contact.id})">X</button>
+        `;
+        ul.appendChild(li);
+    });
+    contactsListContainer.appendChild(ul);
 }
 
 
-// --- LOGIQUE DE SAISIE DOUBLE MENU ---
+// --- LOGIQUE DE SAISIE DOUBLE MENU (inchangée) ---
 
 function updateShiftTime(scheduleKey, type, event) {
     const container = event.target.closest('td');
@@ -171,22 +217,18 @@ function updateShiftTime(scheduleKey, type, event) {
     
     let shiftToSave = null;
 
-    // Si le menu de Début est une option spéciale (Congé, Maladie, N/D, etc.)
     if (SPECIAL_SHIFTS.includes(startValue) && startValue !== "------") {
         shiftToSave = startValue;
         
-        // Force le menu de Fin à "------" si un shift spécial est sélectionné
         if (endTimeSelect.value !== "------") {
              endTimeSelect.value = "------";
              endValue = "------";
         }
     } 
-    // Sinon, on tente de former une plage horaire
     else if (startValue !== "------" || endValue !== "------") {
         shiftToSave = `${startValue}-${endValue}`;
     }
 
-    // Sauvegarde ou suppression de la donnée
     if (shiftToSave === null || shiftToSave === "------" || shiftToSave === "------" + "-" + "------") {
         delete scheduleData[scheduleKey];
         container.querySelector('.shift-label').textContent = "------"; 
@@ -194,14 +236,12 @@ function updateShiftTime(scheduleKey, type, event) {
     } else {
         scheduleData[scheduleKey] = shiftToSave;
         
-        // Met à jour l'affichage
         const displayValue = SPECIAL_SHIFTS.includes(shiftToSave) 
                             ? shiftToSave 
                             : shiftToSave.replace('-', ' à ');
                             
         container.querySelector('.shift-label').textContent = displayValue;
 
-        // Met à jour la classe pour la couleur N/D (qui est maintenant "N/D")
         if (shiftToSave === "N/D") {
             container.classList.add('not-available');
         } else {
@@ -213,7 +253,7 @@ function updateShiftTime(scheduleKey, type, event) {
 }
 
 
-// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE ---
+// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE (inchangée) ---
 
 function createLocalMidnightDate(dateString) {
     if (!dateString) return new Date(); 
@@ -288,7 +328,12 @@ function generateSchedule() {
     const tableHeader = document.getElementById('tableHeader');
     const tableBody = document.getElementById('tableBody'); 
     
-    // 1. Générer l'en-tête du tableau 
+    // 1. Préparer les options HTML
+    const timeOptionsHTML = TIME_OPTIONS.map(time => `<option value="${time}">${time}</option>`).join('');
+    const specialOptionsHTML = SPECIAL_SHIFTS.map(shift => `<option value="${shift}">${shift}</option>`).join('');
+
+
+    // 2. Générer l'en-tête du tableau 
     tableHeader.innerHTML = '<th>Employé</th>';
     dates.forEach(date => {
         const day = date.toLocaleDateString('fr-FR', { weekday: 'short' });
@@ -296,7 +341,7 @@ function generateSchedule() {
         tableHeader.innerHTML += `<th>${day}<br>${dateStr}</th>`;
     });
 
-    // 2. Générer le corps du tableau
+    // 3. Générer le corps du tableau
     tableBody.innerHTML = '';
     let currentRow = 0;
 
@@ -329,11 +374,9 @@ function generateSchedule() {
                     
                     if (shiftData) {
                         if (shiftData.includes('-')) {
-                            // Format heure: "HH:MM-HH:MM" -> Affichage: "HH:MM à HH:MM"
                             [startTime, endTime] = shiftData.split('-');
                             displayValue = shiftData.replace('-', ' à ');
                         } else {
-                            // Format spécial: "Congé" ou "N/D"
                             specialShift = shiftData;
                             displayValue = specialShift;
                         }
@@ -393,7 +436,7 @@ function generateSchedule() {
 }
 
 
-// --- FONCTIONS DE FILTRAGE ET EXPORT (inchangées) ---
+// --- FONCTIONS DE FILTRAGE ET EXPORT (inchangée) ---
 
 function filterByButton(button, dept) {
     const buttons = document.querySelectorAll('.d-flex.gap-2 button');
@@ -421,7 +464,6 @@ function applyDisplayFilter(deptToFilter) {
                 row.style.display = 'none';
             }
         } else if (row.classList.contains('employee-row')) { 
-            // CORRECTION DE LOGIQUE DU FILTRE : Afficher si le département est visible et correspond
             if (isCurrentDeptRowVisible && (deptToFilter === 'all' || deptName === deptToFilter)) {
                 row.style.display = '';
             } else {
