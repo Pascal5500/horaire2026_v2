@@ -90,8 +90,14 @@ const firebaseConfig = {
             <hr>
             
             <div class="row">
+                
                 <div class="col-md-6 border-end">
-                    <h3 class="h6">1. Gérer les Employés de l'HORAIRE</h3>
+                    <h3 class="h6 d-flex justify-content-between align-items-center">
+                        1. Gérer les Employés de l'HORAIRE
+                        <button class="btn btn-sm btn-outline-dark" type="button" data-bs-toggle="collapse" data-bs-target="#employeesListContainer" aria-expanded="true" aria-controls="employeesListContainer">
+                            Masquer/Afficher
+                        </button>
+                    </h3>
                     <p class="text-muted small">Employés assignés à un département.</p>
                     <div class="input-group mb-3">
                         <input type="text" id="newEmployeeName" class="form-control" placeholder="Nom de l'employé">
@@ -105,12 +111,17 @@ const firebaseConfig = {
                     </div>
                     
                     <h3 class="h6 mt-3">Liste des Employés actuels</h3>
-                    <div id="employeesListContainer" class="row">
+                    <div id="employeesListContainer" class="collapse show row"> 
                         </div>
                 </div>
 
                 <div class="col-md-6">
-                    <h3 class="h6">2. Gérer les Contacts / Pool de remplacement</h3>
+                    <h3 class="h6 d-flex justify-content-between align-items-center">
+                        2. Gérer les Contacts / Pool de remplacement
+                        <button class="btn btn-sm btn-outline-dark" type="button" data-bs-toggle="collapse" data-bs-target="#contactsListContainer" aria-expanded="true" aria-controls="contactsListContainer">
+                            Masquer/Afficher
+                        </button>
+                    </h3>
                     <p class="text-muted small">Contacts avec numéro de téléphone (pour le pool ou les urgences).</p>
                     <div class="input-group mb-3">
                         <input type="text" id="newContactName" class="form-control" placeholder="Nom du contact">
@@ -119,10 +130,10 @@ const firebaseConfig = {
                     </div>
                     
                     <h3 class="h6 mt-3">Liste des Contacts enregistrés</h3>
-                    <div id="contactsListContainer">
+                    <div id="contactsListContainer" class="collapse show">
                         </div>
                 </div>
-            </div> </div>
+            </div> </div>            </div> </div>
     </div> <div class="table-responsive shadow-lg rounded">
         <table id="scheduleTable" class="table table-bordered table-striped align-middle text-center">
             

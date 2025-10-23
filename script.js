@@ -6,7 +6,7 @@ let currentDisplayFilter = 'all';
 
 const SPECIAL_SHIFTS = ["------", "Congé", "Maladie", "Fermé", "N/D"]; 
 let employees = [];
-let contacts = []; // NOUVEAU: Pour les contacts avec téléphone
+let contacts = []; 
 let scheduleData = {}; 
 
 
@@ -56,7 +56,6 @@ function syncDataFromFirebase() {
         generateSchedule(); 
     });
 
-    // NOUVEAU: Écoute des contacts
     db.ref('contacts').on('value', (snapshot) => {
         let rawContacts = snapshot.val();
         if (rawContacts && !Array.isArray(rawContacts)) {
@@ -72,7 +71,6 @@ function syncDataFromFirebase() {
         let needsSave = false;
         scheduleData = snapshot.val() || {};
         
-        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CONVERSION VERS LE NOUVEAU STANDARD "N/D" ---
         const CORRECT_VALUE = "N/D";
         const TYPOS_TO_FIX = [
             "Non à Disponible", 
@@ -88,7 +86,6 @@ function syncDataFromFirebase() {
                 needsSave = true;
             }
         });
-        // --- FIN ROUTINE DE NETTOYAGE ---
 
         if (needsSave) {
             saveSchedule();
@@ -158,7 +155,7 @@ function removeEmployee(id) {
     saveSchedule();
 }
 
-// 2. NOUVEAU: Ajouter un contact externe / pool
+// 2. Ajouter un contact externe / pool
 function addContact() {
     const nameInput = document.getElementById('newContactName');
     const phoneInput = document.getElementById('newContactPhone');
@@ -181,15 +178,24 @@ function removeContact(id) {
 
 function renderAdminLists() {
     // 1. Liste des Employés réguliers (pour l'horaire)
-    const employeesListContainer = document.getElementById('employeesListContainer');
+    // IMPORTANT: On utilise querySelector pour cibler le contenu à l'intérieur du collapse
+    const employeesListContainer = document.querySelector('#employeesListContainer');
     if (!employeesListContainer) return; 
+    
+    // Assurez-vous de cibler un conteneur interne pour le rendu si employeesListContainer est le collapse
+    let innerEmployeeContent = employeesListContainer.querySelector('.list-content');
+    if (!innerEmployeeContent) {
+        innerEmployeeContent = document.createElement('div');
+        innerEmployeeContent.className = 'list-content';
+        employeesListContainer.appendChild(innerEmployeeContent);
+    }
+    innerEmployeeContent.innerHTML = '';
 
-    employeesListContainer.innerHTML = '';
 
     DEPARTMENTS.forEach(dept => {
         const deptEmployees = employees.filter(emp => emp && emp.dept === dept);
         const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-12 mb-2'; // Utilise toute la colonne pour la liste des employés
+        colDiv.className = 'col-md-12 mb-2'; 
         colDiv.innerHTML = `
             <h6>${dept}</h6>
             <ul class="list-group">
@@ -201,14 +207,14 @@ function renderAdminLists() {
                 `).join('')}
             </ul>
         `;
-        employeesListContainer.appendChild(colDiv);
+        innerEmployeeContent.appendChild(colDiv);
     });
 
     // 2. Liste des Contacts externes (avec téléphone)
-    const contactsListContainer = document.getElementById('contactsListContainer');
+    const contactsListContainer = document.querySelector('#contactsListContainer');
     if (!contactsListContainer) return; 
     
-    contactsListContainer.innerHTML = '';
+    contactsListContainer.innerHTML = ''; // Remplacement direct du contenu
 
     const ul = document.createElement('ul');
     ul.className = 'list-group';
@@ -349,12 +355,10 @@ function generateSchedule() {
     const tableHeader = document.getElementById('tableHeader');
     const tableBody = document.getElementById('tableBody'); 
     
-    // 1. Préparer les options HTML
     const timeOptionsHTML = TIME_OPTIONS.map(time => `<option value="${time}">${time}</option>`).join('');
     const specialOptionsHTML = SPECIAL_SHIFTS.map(shift => `<option value="${shift}">${shift}</option>`).join('');
 
 
-    // 2. Générer l'en-tête du tableau 
     tableHeader.innerHTML = '<th>Employé</th>';
     dates.forEach(date => {
         const day = date.toLocaleDateString('fr-FR', { weekday: 'short' });
@@ -362,7 +366,6 @@ function generateSchedule() {
         tableHeader.innerHTML += `<th>${day}<br>${dateStr}</th>`;
     });
 
-    // 3. Générer le corps du tableau
     tableBody.innerHTML = '';
     let currentRow = 0;
 
@@ -403,7 +406,6 @@ function generateSchedule() {
                         }
                     }
 
-                    // Applique la couleur rouge si c'est "N/D"
                     if (displayValue === "N/D") {
                         cell.classList.add('not-available');
                     } else {
@@ -412,9 +414,7 @@ function generateSchedule() {
                     
                     const showTimeSelectors = isAdminMode; 
                     
-                    // --- STRUCTURE DE LA CELLULE ---
                     if (showTimeSelectors) {
-                        // Mode Admin: Afficher les menus
                         cell.innerHTML = `
                             <div class="d-flex flex-column align-items-center position-relative">
                                 
@@ -441,7 +441,6 @@ function generateSchedule() {
                             </div>
                         `;
                     } else {
-                        // Mode Lecture Seule: Afficher uniquement le texte
                         cell.innerHTML = `
                             <div class="d-flex flex-column align-items-center position-relative">
                                 <span class="shift-label fw-bold" style="font-size: 1.1em;">${displayValue}</span>
