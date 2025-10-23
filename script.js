@@ -130,7 +130,6 @@ function disableAdminMode() {
 
 // --- GESTION DES EMPLOYÉS ET CONTACTS (ADMIN) ---
 
-// 1. Employés réguliers (pour l'horaire)
 function addEmployee() {
     const nameInput = document.getElementById('newEmployeeName');
     const deptInput = document.getElementById('newEmployeeDept');
@@ -155,7 +154,6 @@ function removeEmployee(id) {
     saveSchedule();
 }
 
-// 2. Ajouter un contact externe / pool
 function addContact() {
     const nameInput = document.getElementById('newContactName');
     const phoneInput = document.getElementById('newContactPhone');
@@ -178,24 +176,15 @@ function removeContact(id) {
 
 function renderAdminLists() {
     // 1. Liste des Employés réguliers (pour l'horaire)
-    // IMPORTANT: On utilise querySelector pour cibler le contenu à l'intérieur du collapse
-    const employeesListContainer = document.querySelector('#employeesListContainer');
+    const employeesListContainer = document.getElementById('employeesListContainer');
     if (!employeesListContainer) return; 
-    
-    // Assurez-vous de cibler un conteneur interne pour le rendu si employeesListContainer est le collapse
-    let innerEmployeeContent = employeesListContainer.querySelector('.list-content');
-    if (!innerEmployeeContent) {
-        innerEmployeeContent = document.createElement('div');
-        innerEmployeeContent.className = 'list-content';
-        employeesListContainer.appendChild(innerEmployeeContent);
-    }
-    innerEmployeeContent.innerHTML = '';
 
+    employeesListContainer.innerHTML = '';
 
     DEPARTMENTS.forEach(dept => {
         const deptEmployees = employees.filter(emp => emp && emp.dept === dept);
         const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-12 mb-2'; 
+        colDiv.className = 'col-md-12 mb-2';
         colDiv.innerHTML = `
             <h6>${dept}</h6>
             <ul class="list-group">
@@ -207,14 +196,14 @@ function renderAdminLists() {
                 `).join('')}
             </ul>
         `;
-        innerEmployeeContent.appendChild(colDiv);
+        employeesListContainer.appendChild(colDiv);
     });
 
     // 2. Liste des Contacts externes (avec téléphone)
-    const contactsListContainer = document.querySelector('#contactsListContainer');
+    const contactsListContainer = document.getElementById('contactsListContainer');
     if (!contactsListContainer) return; 
     
-    contactsListContainer.innerHTML = ''; // Remplacement direct du contenu
+    contactsListContainer.innerHTML = '';
 
     const ul = document.createElement('ul');
     ul.className = 'list-group';
