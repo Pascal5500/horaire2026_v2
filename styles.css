@@ -1,0 +1,135 @@
+body {
+    background-color: #f4f7fa; 
+}
+
+/* Centre la page sur les grands écrans */
+.container {
+    max-width: 1400px; 
+}
+
+/* 1. Zone de contrôle (dates, boutons, admin) reste figée */
+#controlContainer {
+    position: sticky;
+    top: 0; 
+    z-index: 1000; 
+    background-color: #f4f7fa; 
+    box-shadow: 0 4px 6px -6px #333; 
+    padding-top: 10px;
+}
+
+/* 2. Fixe l'en-tête de la table (la bande noire des dates) */
+#scheduleTable thead {
+    position: sticky;
+    top: 0; 
+    z-index: 10;
+    background-color: #343a40; 
+}
+
+/* Style général du tableau */
+#scheduleTable {
+    width: 100%;
+    border-collapse: collapse; 
+}
+
+#scheduleTable th, #scheduleTable td {
+    white-space: nowrap; 
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+/* --- Styles pour la fonctionnalité N/D --- */
+
+/* Positionnement de la case à cocher N/D */
+.availability-check {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 5;
+    font-size: 0.75rem;
+}
+
+/* Règle principale pour la couleur rouge de la cellule */
+.not-available {
+    /* Utilisation de !important pour forcer la couleur de fond sur la cellule (td) */
+    background-color: #ffcccc !important; 
+    /* Force la bordure pour la visibilité */
+    border: 1px solid #cc0000 !important; 
+}
+
+/* Style pour les sélecteurs de plages horaires */
+.shift-select {
+    width: 100%;
+    min-width: 100px; 
+    border: none;
+    padding: 0.5rem 0.2rem; 
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-top: 15px; /* Déplace le menu sous le N/D */
+}
+
+/* Style pour le bouton actif dans la barre de filtre */
+.btn-outline-dark.active {
+    background-color: #343a40 !important;
+    color: white !important;
+}
+
+/* Cache les éléments d'administration et de contrôle lors de l'impression */
+@media print {
+    /* Cache le conteneur sticky (contrôles, boutons, filtres) */
+    #controlContainer {
+        display: none !important;
+    }
+    
+    /* Retire la position sticky de la tête pour l'impression */
+    #scheduleTable thead {
+        position: static !important;
+    }
+    
+    /* Masque la case à cocher N/D */
+    .availability-check {
+        display: none !important;
+    }
+    
+    /* Affiche le texte de l'horaire à la place du select */
+    .shift-select {
+        display: none !important;
+    }
+
+    .shift-label {
+        display: block !important; 
+    }
+    
+    .not-available {
+        background-color: #ffcccc !important; 
+    }
+}
+/* Cache les sélecteurs et les libellés en mode lecture seule */
+.employee-row:not([data-admin-mode="true"]) .start-time,
+.employee-row:not([data-admin-mode="true"]) .end-time,
+.employee-row:not([data-admin-mode="true"]) .availability-check,
+.employee-row:not([data-admin-mode="true"]) .w-100 { /* Cible les libellés Début/Fin */
+    display: none !important;
+}
+
+/* Affiche le shift-label en mode lecture seule */
+.employee-row:not([data-admin-mode="true"]) .shift-label {
+    display: block !important;
+}
+
+/* Ajoute de l'espace pour l'alignement vertical */
+.employee-row .shift-label {
+    min-height: 40px; /* Assure un minimum de hauteur pour la cellule en lecture seule */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Règle CSS pour colorer les cellules "Non-Disponible" */
+.table-responsive table tbody td.not-available {
+    background-color: #fce4e4 !important; /* Rouge très pâle */
+}
+/* Ajustement CSS pour le mode Administrateur (pour aligner Début/Fin) */
+.d-flex.flex-column.align-items-center > .d-flex.flex-row.align-items-center.w-100 {
+    margin-top: 5px; /* Petit espace entre les lignes Début et Fin */
+}
