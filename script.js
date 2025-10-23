@@ -252,7 +252,7 @@ function renderAdminLists() {
                 ${deptEmployees.map(emp => `
                     <li class="list-group-item d-flex justify-content-between align-items-center small">
                         <span>${emp.name}</span>
-                        <div>
+                        <div class="employee-actions">
                             <button class="btn btn-sm btn-info me-2" title="Copier la semaine actuelle vers la semaine suivante" onclick="copyEmployeeScheduleToNextWeek(${emp.id})">
                                 Copier ▶
                             </button>
@@ -265,6 +265,26 @@ function renderAdminLists() {
         employeesListContainer.appendChild(colDiv);
     });
 
+    // 2. Liste des Contacts externes (avec téléphone)
+    const contactsListContainer = document.getElementById('contactsListContainer');
+    if (!contactsListContainer) return; 
+    
+    contactsListContainer.innerHTML = '';
+
+    const ul = document.createElement('ul');
+    ul.className = 'list-group';
+
+    contacts.forEach(contact => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center small';
+        li.innerHTML = `
+            <span>${contact.name} (${contact.phone})</span>
+            <button class="btn btn-sm btn-danger" onclick="removeContact(${contact.id})">X</button>
+        `;
+        ul.appendChild(li);
+    });
+    contactsListContainer.appendChild(ul);
+}
     // 2. Liste des Contacts externes (avec téléphone)
     const contactsListContainer = document.getElementById('contactsListContainer');
     if (!contactsListContainer) return; 
