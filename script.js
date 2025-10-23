@@ -71,6 +71,7 @@ function syncDataFromFirebase() {
         let needsSave = false;
         scheduleData = snapshot.val() || {};
         
+        // --- ROUTINE DE NETTOYAGE (MIGRATION) : CONVERSION VERS LE NOUVEAU STANDARD "N/D" ---
         const CORRECT_VALUE = "N/D";
         const TYPOS_TO_FIX = [
             "Non à Disponible", 
@@ -86,6 +87,7 @@ function syncDataFromFirebase() {
                 needsSave = true;
             }
         });
+        // --- FIN ROUTINE DE NETTOYAGE ---
 
         if (needsSave) {
             saveSchedule();
@@ -221,7 +223,7 @@ function renderAdminLists() {
 }
 
 
-// --- LOGIQUE DE SAISIE DOUBLE MENU (inchangée) ---
+// --- LOGIQUE DE SAISIE DOUBLE MENU ---
 
 function updateShiftTime(scheduleKey, type, event) {
     const container = event.target.closest('td');
@@ -269,7 +271,7 @@ function updateShiftTime(scheduleKey, type, event) {
 }
 
 
-// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE (inchangée) ---
+// --- NAVIGATION HEBDOMADAIRE ET AFFICHAGE ---
 
 function createLocalMidnightDate(dateString) {
     if (!dateString) return new Date(); 
