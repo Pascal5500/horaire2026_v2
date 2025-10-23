@@ -286,6 +286,27 @@ function renderAdminLists() {
     contactsListContainer.appendChild(ul);
 }
 
+    // 2. Liste des Contacts externes (avec téléphone)
+    const contactsListContainer = document.getElementById('contactsListContainer');
+    if (!contactsListContainer) return; 
+    
+    contactsListContainer.innerHTML = '';
+
+    const ul = document.createElement('ul');
+    ul.className = 'list-group';
+
+    contacts.forEach(contact => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center small';
+        li.innerHTML = `
+            <span>${contact.name} (${contact.phone})</span>
+            <button class="btn btn-sm btn-danger" onclick="removeContact(${contact.id})">X</button>
+        `;
+        ul.appendChild(li);
+    });
+    contactsListContainer.appendChild(ul);
+}
+
 
 // --- LOGIQUE DE SAISIE DOUBLE MENU ---
 
