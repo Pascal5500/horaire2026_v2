@@ -34,9 +34,9 @@ const firebaseConfig = {
 
 <div class="container my-5">
     
-    <h1 class="text-center pt-3 mb-4">Gestionnaire des horaires Golf Martheninois</h1>
+    <h1 class="text-center pt-3 mb-4">Planning des Départements (Affichage Hebdomadaire)</h1>
     
-   <div id="controlContainer">
+    <div id="controlContainer">
         
         <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded shadow-sm">
             
@@ -78,7 +78,7 @@ const firebaseConfig = {
         
         <div class="d-flex justify-content-end mb-3">
             <div class="input-group" style="width: 350px;">
-                <input type="password" id="adminPassword" class="form-control" placeholder="">
+                <input type="password" id="adminPassword" class="form-control" placeholder="Mot de passe admin (1000)">
                 <button id="adminAuthButton" class="btn btn-danger" onclick="authenticateAdmin()">Activer Admin</button>
             </div>
         </div>
@@ -140,7 +140,7 @@ const firebaseConfig = {
             
             <thead class="table-dark">
                 <tr id="tableHeader">
-                    <th>Employé</th>
+                    <th>Département / Employé</th>
                 </tr>
             </thead>
             
