@@ -97,7 +97,7 @@ function syncDataFromFirebase() {
     });
 }
 
-// --- FONCTIONS D'AUTHENTIFICATION (inchangées) ---
+// --- FONCTIONS D'AUTHENTIFICATION ---
 function authenticateAdmin() {
     const passwordInput = document.getElementById('adminPassword');
     if (passwordInput.value === ADMIN_PASSWORD) {
@@ -123,7 +123,7 @@ function disableAdminMode() {
     const passwordInput = document.getElementById('adminPassword');
     passwordInput.disabled = false;
     document.getElementById('adminAuthButton').disabled = false;
-    passwordInput.placeholder = '';
+    passwordInput.placeholder = 'Mot de passe admin (1000)';
     document.getElementById('adminPanel').style.display = 'none';
     generateSchedule();
     alert("Mode Administrateur désactivé.");
@@ -192,8 +192,13 @@ function renderAdminLists() {
             <ul class="list-group">
                 ${deptEmployees.map(emp => `
                     <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        ${emp.name} 
-                        <button class="btn btn-sm btn-danger" onclick="removeEmployee(${emp.id})">X</button>
+                        <span>${emp.name}</span>
+                        <div class="employee-actions">
+                            <button class="btn btn-sm btn-info me-2" title="Copier la semaine actuelle vers la semaine suivante" onclick="copyEmployeeScheduleToNextWeek(${emp.id})">
+                                Copier ▶
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="removeEmployee(${emp.id})">X</button>
+                        </div>
                     </li>
                 `).join('')}
             </ul>
@@ -303,6 +308,51 @@ function goToToday() {
     generateSchedule();
 }
 
+function copyEmployeeScheduleToNextWeek(employeeId) {
+    const startDateInput = document.getElementById('startDate').value;
+    if (!startDateInput) {
+        alert("Veuillez sélectionner une date de début de semaine (Dimanche) d'abord.");
+        return;
+    }
+
+    const currentWeekDates = getDates(startDateInput);
+    
+    let nextWeekStartDate = createLocalMidnightDate(startDateInput);
+    nextWeekStartDate.setDate(nextWeekStartDate.getDate() + 7);
+    
+    const nextWeekDates = getDates(nextWeekStartDate.toISOString().split('T')[0]); 
+
+    let copiedCount = 0;
+
+    currentWeekDates.forEach((currentDate, index) => {
+        const nextDate = nextWeekDates[index];
+        
+        const currentKeyDate = currentDate.toISOString().split('T')[0];
+        const sourceKey = `${employeeId}-${currentKeyDate}`;
+
+        const nextKeyDate = nextDate.toISOString().split('T')[0];
+        const targetKey = `${employeeId}-${nextKeyDate}`;
+        
+        const shift = scheduleData[sourceKey];
+
+        if (shift) {
+            scheduleData[targetKey] = shift;
+            copiedCount++;
+        } else {
+            if (scheduleData[targetKey]) {
+                delete scheduleData[targetKey];
+            }
+        }
+    });
+
+    if (copiedCount > 0) {
+        saveSchedule();
+        alert(`Horaire de l'employé (ID: ${employeeId}) copié pour ${copiedCount} jours vers la semaine du ${nextWeekDates[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Veuillez naviguer à la semaine suivante pour vérifier.`);
+    } else {
+        alert("Aucun horaire trouvé pour copier cette semaine.");
+    }
+}
+
 
 function getDates(startDate) {
     const dates = [];
@@ -350,7 +400,7 @@ function generateSchedule() {
     const specialOptionsHTML = SPECIAL_SHIFTS.map(shift => `<option value="${shift}">${shift}</option>`).join('');
 
 
-    tableHeader.innerHTML = '<th>Employé</th>';
+    tableHeader.innerHTML = '<th>Département / Employé</th>';
     dates.forEach(date => {
         const day = date.toLocaleDateString('fr-FR', { weekday: 'short' });
         const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric' });
@@ -435,116 +485,3 @@ function generateSchedule() {
                         cell.innerHTML = `
                             <div class="d-flex flex-column align-items-center position-relative">
                                 <span class="shift-label fw-bold" style="font-size: 1.1em;">${displayValue}</span>
-                            </div>
-                        `;
-                    }
-                });
-            });
-        }
-    });
-    
-    applyDisplayFilter(currentDisplayFilter);
-}
-
-
-// --- FONCTIONS DE FILTRAGE ET EXPORT (inchangées) ---
-
-function filterByButton(button, dept) {
-    const buttons = document.querySelectorAll('.d-flex.gap-2 button');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    button.classList.add('active');
-
-    currentDisplayFilter = dept;
-    applyDisplayFilter(dept);
-}
-
-function applyDisplayFilter(deptToFilter) {
-    const tableBody = document.getElementById('tableBody'); 
-    const rows = tableBody.rows;
-    let isCurrentDeptRowVisible = false;
-
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const deptName = row.getAttribute('data-dept');
-        
-        if (row.classList.contains('dept-header-row')) { 
-            if (deptToFilter === 'all' || deptName === deptToFilter) {
-                isCurrentDeptRowVisible = true;
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        } else if (row.classList.contains('employee-row')) { 
-            if (isCurrentDeptRowVisible && (deptToFilter === 'all' || deptName === deptToFilter)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        }
-    }
-}
-
-function filterScheduleForAction(deptToFilter) {
-    applyDisplayFilter(deptToFilter);
-}
-
-function getSelectedDept() {
-    return document.getElementById('deptSelector').value;
-}
-
-function printSchedule() {
-    const dept = getSelectedDept();
-    filterScheduleForAction(dept); 
-    window.print();
-    filterScheduleForAction(currentDisplayFilter); 
-}
-
-function exportPDF() {
-    const dept = getSelectedDept();
-    filterScheduleForAction(dept);
-    
-    const table = document.getElementById('scheduleTable');
-    
-    html2canvas(table, { scale: 2 }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const imgHeight = canvas.height * pdfWidth / canvas.width;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
-        
-        const filename = dept === 'all' ? 'Horaire_Complet.pdf' : `Horaire_${dept}.pdf`;
-        pdf.save(filename);
-
-        filterScheduleForAction(currentDisplayFilter); 
-    });
-}
-
-
-// --- INITIALISATION ---
-
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        syncDataFromFirebase(); 
-    } catch (e) {
-        console.error("Erreur de connexion Firebase lors de l'initialisation:", e);
-    }
-
-    const today = new Date();
-    const currentSunday = getSundayOfWeek(today); 
-    
-    const year = currentSunday.getFullYear();
-    const month = String(currentSunday.getMonth() + 1).padStart(2, '0');
-    const day = String(currentSunday.getDate()).padStart(2, '0');
-    
-    const startDateInput = document.getElementById('startDate');
-    if (startDateInput) {
-        startDateInput.value = `${year}-${month}-${day}`;
-    }
-
-    const adminPanel = document.getElementById('adminPanel');
-    if (adminPanel) {
-        adminPanel.style.display = 'none';
-    }
-});
