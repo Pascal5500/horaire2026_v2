@@ -175,6 +175,65 @@ function removeContact(id) {
     saveContacts();
 }
 
+/**
+ * NOUVELLE FONCTION: Copie l'horaire de l'employé pour la semaine affichée
+ * vers la semaine suivante.
+ * @param {number} employeeId - L'ID unique de l'employé.
+ */
+function copyEmployeeScheduleToNextWeek(employeeId) {
+    const startDateInput = document.getElementById('startDate').value;
+    if (!startDateInput) {
+        alert("Veuillez sélectionner une date de début de semaine (Dimanche) d'abord.");
+        return;
+    }
+
+    // 1. Déterminer les dates de la semaine actuelle (Source)
+    const currentWeekDates = getDates(startDateInput);
+    
+    // 2. Calculer la date de début de la semaine suivante (Cible)
+    let nextWeekStartDate = createLocalMidnightDate(startDateInput);
+    nextWeekStartDate.setDate(nextWeekStartDate.getDate() + 7);
+    
+    // 3. Déterminer les dates de la semaine suivante (Cible)
+    // On passe la date au format string YYYY-MM-DD
+    const nextWeekDates = getDates(nextWeekStartDate.toISOString().split('T')[0]); 
+
+    let copiedCount = 0;
+
+    // 4. Itérer et copier les données
+    currentWeekDates.forEach((currentDate, index) => {
+        const nextDate = nextWeekDates[index];
+        
+        // Clé pour la semaine actuelle (Source)
+        const currentKeyDate = currentDate.toISOString().split('T')[0];
+        const sourceKey = `${employeeId}-${currentKeyDate}`;
+
+        // Clé pour la semaine suivante (Cible)
+        const nextKeyDate = nextDate.toISOString().split('T')[0];
+        const targetKey = `${employeeId}-${nextKeyDate}`;
+        
+        const shift = scheduleData[sourceKey];
+
+        if (shift) {
+            // Copier le shift s'il existe
+            scheduleData[targetKey] = shift;
+            copiedCount++;
+        } else {
+            // Si le shift source est vide, s'assurer que le target est supprimé pour nettoyer
+            if (scheduleData[targetKey]) {
+                delete scheduleData[targetKey];
+            }
+        }
+    });
+
+    if (copiedCount > 0) {
+        saveSchedule();
+        alert(`Horaire de l'employé (ID: ${employeeId}) copié pour ${copiedCount} jours vers la semaine du ${nextWeekDates[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Veuillez naviguer à la semaine suivante pour vérifier.`);
+    } else {
+        alert("Aucun horaire trouvé pour copier cette semaine.");
+    }
+}
+
 
 function renderAdminLists() {
     // 1. Liste des Employés réguliers (pour l'horaire)
@@ -192,8 +251,13 @@ function renderAdminLists() {
             <ul class="list-group">
                 ${deptEmployees.map(emp => `
                     <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        ${emp.name} 
-                        <button class="btn btn-sm btn-danger" onclick="removeEmployee(${emp.id})">X</button>
+                        <span>${emp.name}</span>
+                        <div>
+                            <button class="btn btn-sm btn-info me-2" title="Copier la semaine actuelle vers la semaine suivante" onclick="copyEmployeeScheduleToNextWeek(${emp.id})">
+                                Copier ▶
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="removeEmployee(${emp.id})">X</button>
+                        </div>
                     </li>
                 `).join('')}
             </ul>
