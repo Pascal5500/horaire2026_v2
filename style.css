@@ -1,0 +1,73 @@
+body {
+    background-color: #f4f7fa; 
+}
+.container {
+    max-width: 1400px; 
+}
+#controlContainer {
+    position: sticky;
+    top: 0; 
+    z-index: 1000; 
+    background-color: #f4f7fa; 
+    box-shadow: 0 4px 6px -6px #333; 
+    padding-top: 10px;
+}
+#scheduleTable thead {
+    position: sticky;
+    top: 0; 
+    z-index: 10;
+    background-color: #343a40; 
+}
+#scheduleTable {
+    width: 100%;
+    border-collapse: collapse; 
+}
+#scheduleTable th, #scheduleTable td {
+    white-space: nowrap; 
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+/* --- CORRECTIONS POUR L'AFFICHAGE ET L'ADMIN --- */
+
+/* 1. Règle principale pour la couleur rouge de la cellule (Non-Disponible) */
+.not-available {
+    background-color: #ffcccc !important; 
+    border: 1px solid #cc0000 !important; 
+}
+
+/* 2. Ajustement de l'alignement en mode admin pour les libellés Début/Fin */
+.d-flex.flex-column.align-items-center > .d-flex.flex-row.align-items-center.w-100 {
+    margin-top: 5px; 
+}
+
+/* 3. Style pour le bouton actif dans la barre de filtre */
+.btn-outline-dark.active {
+    background-color: #343a40 !important;
+    color: white !important;
+}
+
+/* 4. Styles des sélecteurs d'heures */
+.start-time, .end-time {
+    font-size: 0.8em; 
+    padding: 0.1rem 0.5rem;
+    height: auto;
+}
+
+.shift-select {
+    width: 100%;
+    min-width: 100px; 
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+/* --- Media Print (inchangé) --- */
+@media print {
+    #controlContainer { display: none !important; }
+    #scheduleTable thead { position: static !important; }
+    .start-time, .end-time { display: none !important; }
+    .shift-label { display: block !important; }
+    .not-available { background-color: #ffcccc !important; }
+}
